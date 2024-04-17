@@ -210,6 +210,9 @@ class DeltaCodecApp(QMainWindow):
         self.error_slider_2.setOrientation(QtCore.Qt.Horizontal)
         self.error_slider_2.setObjectName("error_slider_2")
         self.verticalLayout.addWidget(self.error_slider_2)
+        self.error_label_2 = QtWidgets.QLabel(self.groupBox)
+        self.error_label_2.setObjectName("error_label_2")
+        self.verticalLayout.addWidget(self.error_label_2)
         self.label_55 = QtWidgets.QLabel(self.groupBox)
         self.label_55.setObjectName("label_55")
         self.verticalLayout.addWidget(self.label_55)
@@ -323,6 +326,7 @@ class DeltaCodecApp(QMainWindow):
         self.comboBox_2.setItemText(0, _translate("MainWindow", "дБ"))
         self.comboBox_2.setItemText(1, _translate("MainWindow", "мВт"))
         self.error_label.setText(_translate("MainWindow", "Уровень ошибок 0%"))
+        self.error_label_2.setText(_translate("MainWindow", "Значение ошибок дБ"))
         self.result_label.setText(_translate("MainWindow", ""))
         self.label_8.setText(_translate("MainWindow", "Просмотр значений:"))
         self.groupBox_2.setTitle(_translate("MainWindow", "Просмотр графиков"))
@@ -516,6 +520,14 @@ class DeltaCodecApp(QMainWindow):
         self.error_level = self.error_slider.value()
         self.error_label.setText(f'Количество ошибок: {self.error_level}%')
 
+    def update_error_level_2(self):
+        self.error_level_2 = self.error_slider_2.value()
+        izmer = "дБ"
+        if self.comboBox_2.currentText() == "мВт":
+            izmer = "мВт"
+        self.error_label_2.setText(f'Количество ошибок: {self.error_level_2} {izmer}')
+    
+
     def add_errors(self, signal):
         num_samples = len(signal)
         num_errors = int(num_samples * self.error_level / 10000)
@@ -523,6 +535,17 @@ class DeltaCodecApp(QMainWindow):
         signal_with_errors = np.copy(signal)
         signal_with_errors[error_indices] = np.random.uniform(-1, 1, num_errors)
         return signal_with_errors
+    
+    def add_noise(self, signal):
+        if self.comboBox_2.currentText() == "мВт":
+            # Преобразование значения шума из мВт в дБ
+            noise_dB = 10 * np.log10(self.error_level_2)
+            noise = np.random.normal(0, noise_dB, len(signal))
+        else:  # По умолчанию рассматриваем дБ
+            noise = np.random.normal(0, self.error_level_2, len(signal))
+            
+        noisy_signal = signal + noise
+        return noisy_signal
 
     def process_signal(self):
         if (self.level_kvantovan2.text() == '') or not ((self.level_kvantovan2.text().isdigit())):
