@@ -213,6 +213,9 @@ class DeltaCodecApp(QMainWindow):
         self.error_label_2 = QtWidgets.QLabel(self.groupBox)
         self.error_label_2.setObjectName("error_label_2")
         self.verticalLayout.addWidget(self.error_label_2)
+        self.error_label_3 = QtWidgets.QLabel(self.groupBox)
+        self.error_label_3.setObjectName("error_label_3")
+        self.verticalLayout.addWidget(self.error_label_3)
         self.label_55 = QtWidgets.QLabel(self.groupBox)
         self.label_55.setObjectName("label_55")
         self.verticalLayout.addWidget(self.label_55)
@@ -325,8 +328,8 @@ class DeltaCodecApp(QMainWindow):
         self.label_55.setText(_translate("MainWindow", "Добавить уровень ошибок:"))
         self.comboBox_2.setItemText(0, _translate("MainWindow", "дБ"))
         self.comboBox_2.setItemText(1, _translate("MainWindow", "мВт"))
-        self.error_label.setText(_translate("MainWindow", "Уровень ошибок 0%"))
-        self.error_label_2.setText(_translate("MainWindow", "Значение ошибок дБ"))
+        self.error_label.setText(_translate("MainWindow", "Уровень ошибок 0 %"))
+        self.error_label_2.setText(_translate("MainWindow", "Значение ошибок 0 дБ"))
         self.result_label.setText(_translate("MainWindow", ""))
         self.label_8.setText(_translate("MainWindow", "Просмотр значений:"))
         self.groupBox_2.setTitle(_translate("MainWindow", "Просмотр графиков"))
@@ -518,14 +521,14 @@ class DeltaCodecApp(QMainWindow):
 
     def update_error_level(self):
         self.error_level = self.error_slider.value()
-        self.error_label.setText(f'Количество ошибок: {self.error_level}%')
+        self.error_label.setText(f'Уровень ошибок: {self.error_level} %')
 
     def update_error_level_2(self):
         self.error_level_2 = self.error_slider_2.value()
         izmer = "дБ"
         if self.comboBox_2.currentText() == "мВт":
             izmer = "мВт"
-        self.error_label_2.setText(f'Количество ошибок: {self.error_level_2} {izmer}')
+        self.error_label_2.setText(f'Значение ошибок: {self.error_level_2} {izmer}')
     
 
     def add_errors(self, signal):
@@ -539,6 +542,8 @@ class DeltaCodecApp(QMainWindow):
     def add_noise(self, signal):
         if self.comboBox_2.currentText() == "мВт":
             # Преобразование значения шума из мВт в дБ
+            if self.error_level_2 == 0:
+                self.error_level_2 = 1
             noise_dB = 10 * np.log10(self.error_level_2)
             noise = np.random.normal(0, noise_dB, len(signal))
         else:  # По умолчанию рассматриваем дБ
@@ -561,13 +566,16 @@ class DeltaCodecApp(QMainWindow):
                 self.show_signal_ches.setPlainText(np.array2string(audio, threshold=sys.maxsize))
                 self.original_signal = audio
                 self.update_error_level()
-                self.original_signal1 = self.add_errors(self.original_signal)
+                self.update_error_level_2()
+                self.original_signal1 = self.add_noise(self.original_signal)
+                self.original_signal2 = self.add_errors(self.original_signal)
+                self.all_signal = self.original_signal1 + self.original_signal2 
                 self.encoded_signal = self.delta_encode(self.original_signal1)
                 decoded_signal = self.delta_decode(self.encoded_signal)
                 self.decodeded_signal = decoded_signal
                 error_bits_per_second = self.calculate_error_bits_per_second(self.original_signal, self.decodeded_signal)
                 mse_error = self.calculate_mse_error(self.original_signal, self.decodeded_signal    )
-                self.result_label.setText(f'Количество ошибок за секунду: {error_bits_per_second:.20f} \nСредне квадратичная ошибка: {round(mse_error,6)}')
+                self.result_label.setText(f'Количество ошибок за секунду: {round(error_bits_per_second,6)} \nСредне квадратичная ошибка: {round(mse_error,6)}')
                 gotov_orgignal_signal = self.original_signal[:int(self.kolvo2.text())]
                 gotov_encoded_signal = self.encoded_signal[:int(self.kolvo2.text())]
                 gotov_decoded_signal = decoded_signal[:int(self.kolvo2.text())]
@@ -583,14 +591,17 @@ class DeltaCodecApp(QMainWindow):
         rounded_signal = np.round(signal, 3)
         self.show_signal_ches.setPlainText(np.array2string(rounded_signal, threshold=sys.maxsize))
         self.update_error_level()
-        self.original_signal1 = self.add_errors(self.original_signal) 
-        self.encoded_signal = self.delta_encode(self.original_signal1)
+        self.update_error_level_2()
+        self.original_signal1 = self.add_noise(self.original_signal)
+        self.original_signal2 = self.add_errors(self.original_signal)
+        self.all_signal = self.original_signal1 + self.original_signal2 
+        self.encoded_signal = self.delta_encode(self.all_signal)
         decoded_signal = self.delta_decode(self.encoded_signal)
         self.decodeded_signal = decoded_signal
         error_bits_per_second = self.calculate_error_bits_per_second(self.original_signal, decoded_signal)
         mse_error = self.calculate_mse_error(self.original_signal, decoded_signal)
         print(mse_error)
-        self.result_label.setText(f'Количество ошибок за секунду: {error_bits_per_second:.20f} \nСредне квадратичная ошибка: {round(mse_error,6)}')
+        self.result_label.setText(f'Количество ошибок за секунду: {round(error_bits_per_second,6)} \nСредне квадратичная ошибка: {round(mse_error,6)}')
         gotov_orgignal_signal = self.original_signal[:int(self.kolvo1.text())]
         gotov_encoded_signal = self.encoded_signal[:int(self.kolvo1.text())]
         gotov_decoded_signal = decoded_signal[:int(self.kolvo1.text())]
